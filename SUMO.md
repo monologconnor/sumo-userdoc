@@ -2,9 +2,11 @@
 
 > SUMO (Simulation of Urban MObility), 一个由Eclipse维护的开源道路仿真模拟应用, 提供了多种交通运输及包括路人行为场景模拟的解决方案, 此文档为个人在学习SUMO使用期间个人对SUMO原理及应用的理解的总结.
 
+[TOC]
+
 ## SUMO 安装注意事项
 
-经个人测试, SUMO在Windows的Linux子系统, WSL2(Windows Subsystem of Linux)下, SUMO的图形交互应用`sumo-gui`会出现**路网结构无法正常显示**的问题, 而同时因个人有使用OmNet++下Veins框架通过traci接口与SUMO进行接口通信的需求, Windows下OmNet++的Veins依赖包(Simu5G)**无法正常编译**, 只能通过WSL使用OmNet++, 且Windows下的SUMO与WSL2下的Veins间因WSL2的Hyper-V虚拟机性质, **无法正常通信**. 
+经个人测试, SUMO在Windows的Linux子系统, WSL2(Windows Subsystem of Linux)下, SUMO的图形交互应用`sumo-gui`会出现**路网结构无法正常显示**的问题, 而同时因个人有使用OmNet++下Veins框架通过traci接口与SUMO进行接口通信的需求, Windows下OmNet++的Veins依赖包(Simu5G)**无法正常编译**, 只能通过WSL使用OmNet++, 且Windows下的SUMO与WSL2下的Veins间因WSL2的Hyper-V虚拟机性质, **无法正常通信**.
 
 为避免绕弯路, **推荐使用**Ubuntu系统或预装有OmNet++与Veins框架的Ubuntu虚拟机
 
@@ -80,7 +82,7 @@ SUMO在模拟时需要读取的文件种类偏多, 其中以下三种文件满�
 
 更多文件类型可以参考[官网](<https://sumo.dlr.de/docs/Other/File_Extensions.html>)
 
-## 创建一个最基本的SUMO情景模拟
+## 创建并运行一个最基本的SUMO情景模拟
 
 >基于SUMO的配置文件与输入文件都可通过**手动编写**来使用, 本章节将先使用SUMO的GUI组件**创建情景**, 并在保存后放出**相关文件**的代码内容.
 
@@ -141,7 +143,7 @@ netedit的界面中因没有打开或创建的路网文件(network), 显示为�
 
 #### 连续创建节点与连接
 
-如想连续创建多个连续的节点, 可在选中`创建并连接元素`工具后, 在工具栏右侧选中`一次性创建多个连续的节点`(从右往左第二项), 并开始在路网中创建节点. 
+如想连续创建多个连续的节点, 可在选中`创建并连接元素`工具后, 在工具栏右侧选中`一次性创建多个连续的节点`(从右往左第二项), 并开始在路网中创建节点.
 
 ![Successive Tool](images/Image2022-03-23-11-18-55.png)
 
@@ -334,10 +336,57 @@ netedit的界面中因没有打开或创建的路网文件(network), 显示为�
     <flow id="f_0" begin="0.00" color="green" from="E0" to="E1" end="3600.00" vehsPerHour="1800.00"/>
 
     <trip id="t_0" depart="0.00" from="E0" to="E1"/>
-    
+
     <vehicle id="v_0" depart="0.00" color="red">
         <route edges="E0 E1"/>
     </vehicle>
 ```
 
 [参考官网 - Definition of Vehicles, Vehicle Types and Routes](https://sumo.dlr.de/docs/Definition_of_Vehicles%2C_Vehicle_Types%2C_and_Routes.html)
+
+### 在SUMO-GUI中运行模拟
+
+在`netedit`中确保**路网文件被读取**以及**车流文件被读取**的情况下点击`Edit->Open in sumo-gui` (同时`Edit`下的`Load additionals in sumo-gui`与`Load demand in sumo-gui`需要被选中, 否则车流数据**无法传递**至SUMO-GUI)
+
+![SUMO-GUI](images/Image2022-03-23-17-17-42.png)
+
+在开始操作前先点击`File->Save Configuration`, 将模拟配置保存为`*.sumocfg`文件, 后续便无需通过`netedit`打开`SUMO-GUI`, 只需在`SUMO-GUI`中读取此文件.
+
+以下为保存的`*.sumocfg`的文件内容
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2022-03-23 17:28:42 by Eclipse SUMO GUI Version 1.12.0
+-->
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="D:\Documents\Python\sample.net.xml"/>
+        <route-files value="D:\Documents\Python\sample.rou.xml"/>
+    </input>
+
+</configuration>
+```
+
+像之前解释的一样, `*.sumocfg`文件中存储了路网文件`net-file`与车流文件`route-files`的文件位置.
+
+回到SUMO-GUI, 在顶部工具栏中调整模拟的步进延迟(Delay)为合适数值(即经过多长时间模拟自动进行下一步), 此处设为50ms.
+
+![Delay](images/Image2022-03-23-17-21-09.png)
+
+点击左侧的`开始模拟(Start the loaded simulation)`按钮, 即可开始演示并等待模拟完成.
+(或点击`模拟步进(Perform a single simulation step)`按钮完成单次步进).
+
+![Simulation](images/Image2022-03-23-17-25-00.png)
+
+车辆会在模拟开始时显示在路网中
+
+>注: SUMO-GUI的车辆显示**默认为小三角**, 如需更换为`netedit`中一样的**车辆图形**, 可以打开`Edit->Edit Visualization`中的`Vehicles`标签页更改
+
+待模拟完成后, 提示窗口弹出.
+
+![Sim End](images/Image2022-03-23-17-27-56.png)
+
+## 使用Python的Traci包与SUMO进行通信与控制
