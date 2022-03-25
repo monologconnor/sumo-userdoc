@@ -389,4 +389,166 @@ netedit的界面中因没有打开或创建的路网文件(network), 显示为�
 
 ![Sim End](images/Image2022-03-23-17-27-56.png)
 
-## 使用Python的Traci包与SUMO进行通信与控制
+## 使用Python的Traci包与SUMO进行基本的通信与控制
+
+Traci API 为SUMO提供的一套可用于调用与操控SUMO情景模拟的接口, 于包括但不限于Python, C++的各种编程语言中均可使用.
+
+根据功能的划分, Traci API被划分为了13个子模组, 分别为:
+
+* gui
+* lane
+* poi
+* simulation
+* trafficlight
+* vehicletype
+* edge
+* inductionloop
+* junction
+* multientryexit
+* polygon
+* route
+* person
+* vehicle
+
+由于本章节只涉及对先前创建的路网模拟情景进行通信与操控, 下文里只有`simulation`与`vehicle`子模组将会被调用. 其余模组以及更细致的使用场景将于后面的章节中介绍.
+
+### 搭建可使用Traci的Python环境
+
+由于Python的环境搭建与代码验证较为快捷, 此部分内容将使用Windows下的`Python 3.9.7`进行演示.
+
+SUMO在安装时默认会配置好可被Python调用的traci包, 一般情况下可直接在Python终端内导入.
+
+![Traci](images/Image2022-03-25-14-52-34.png)
+
+在Python终端内使用`import traci`命令尝试导入traci包. 如果导入失败, 则尝试手动使用`pip`安装traci:
+
+```sh
+pip install traci
+```
+
+### 通过Traci启动SUMO-GUI
+
+在Python中导入了traci后, 便可使用`traci.start()`命令来启动SUMO.
+在系统环境中已经配置了SUMO启动文件目录的前提下(即命令行中输入`sumo.exe`或`sumo-gui.exe`可顺利启动SUMO程序), 在Python终端中输入
+
+```python
+traci.start(['sumo-gui','-c','sample.sumocfg'])
+```
+
+其中`sample.sumocfg`为上文中保存的`sumocfg`配置文件的**相对路径**或**绝对路径**.
+
+若配置正常, SUMO的GUI界面将被启动, 同时`sample.sumocfg`将被正常读取.
+
+![traci.start](images/Image2022-03-25-15-03-40.png)
+
+如果`sumocfg`文件与之前章节中展示的代码内容一样或相似, 会发现**Python终端进入等待返回的状态, 无法进行任何命令输入**, 且**SUMO无法正常进行模拟**(即模拟与步进无法正常完成).
+
+为修复这一问题, 需要先关闭Python终端且退出SUMO, 打开`sumocfg`文件并在`configuration`项目下添加`gui_only`项:
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+
+<!-- generated on 2022-03-23 17:28:42 by Eclipse SUMO GUI Version 1.12.0
+-->
+
+<configuration xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/sumoConfiguration.xsd">
+
+    <input>
+        <net-file value="D:\Documents\Python\sample.net.xml"/>
+        <route-files value="D:\Documents\Python\sample.rou.xml"/>
+    </input>
+
+    <gui_only>
+        <start value="true"/>
+    </gui_only>
+
+</configuration>
+```
+
+保存后再根据上文中的步骤重新调用`traci.start()`命令, Python终端会正常打印返回值并进入等候命令状态.
+
+![traci.start - gui](images/Image2022-03-25-15-14-57.png)
+
+输入`help(traci.start)`查看其命令文档, 可查看更详细的使用说明
+
+```python
+>>> help(traci.start)
+Help on function start in module traci.main:
+
+start(cmd, port=None, numRetries=60, label='default', verbose=False, traceFile=None, traceGetters=True, stdout=None, doSwitch=True)
+    Start a sumo server using cmd, establish a connection to it and
+    store it under the given label. This method is not thread-safe.
+
+    - cmd (list): uses the Popen syntax. i.e. ['sumo', '-c', 'run.sumocfg']. The remote
+      port option will be added automatically
+    - numRetries (int): retries on failing to connect to sumo (more retries are needed
+      if a big .net.xml file must be loaded)
+    - label (string) : distinguish multiple traci connections used in the same script
+    - verbose (bool): print complete cmd
+    - traceFile (string): write all traci commands to FILE for debugging
+    - traceGetters (bool): whether to include get-commands in traceFile
+    - stdout (iostream): where to pipe sumo process stdout
+```
+
+其中显示traci与SUMO的连接会被赋予一个为`default`的`label`参数, 如果想要同时启动多个SUMO情景模拟, 可通过手动为`traci.start`中的`label`参数赋值, 并在后续命令中指明`label`连接来单独操控:
+
+```python
+traci.start(['sumo-gui','-c','another_sample.sumocfg'], label='another_instance')
+```
+
+### 通过Traci正式开始模拟并获取信息
+
+此时GUI界面中`Delay`栏旁的计时器仍处于空值, 即模拟仍未正式启动, 在Python终端中输入`traci.simulationStep()`, 即可命令SUMO启动模拟, 我们先前设置好的车流也将出现在路网中.
+
+![Simstart](images/Image2022-03-25-15-29-02.png)
+
+>`traci.simulationStep()`函数与上文中介绍GUI内容时的**步进按钮**效果相同, 且会返回一个内容为空的`list`: `[]`. `traci.simulationStep()`的返回值实际上为traci在SUMO模拟中对特定信息的**订阅**(`subscription`), 即用户希望traci在模拟中想要了解的信息的值, 如车辆的速度, 车辆的数量等. 与`subscription`相关的内容将在基本操作介绍完后提及.
+
+`traci.simulationStep()`**默认执行一次步进**, 如果想一次性执行多次步进, 可在命令中附加参数, SUMO模拟将连续执行步进直至模拟时间与参数值相同, 如`traci.simulationStep(5)`即一次性执行多次步进, **直至模拟时间达到5**.
+
+同时, 如果想在Python中得知当前模拟时间信息, 可使用`traci.simulation.getTime()`函数.
+
+```python
+>>> traci.simulation.getTime()
+1.0
+>>> traci.simulationStep(5)
+[]
+>>> traci.simulation.getTime()
+5.0
+>>>
+```
+
+此时, 可通过traci中vehicle子模组下的函数来获取模拟中车辆的各类相关信息.
+如`traci.vehicle.getIDList()`可获取目前存在于路网中所有交通工具实体的id,
+`traci.vehicle.getSpeed()`可使用先前获取的id信息, 查询特定车辆的速度信息,
+`traci.vehicle.getLaneID()`可得知特定车辆目前处于的道路等.
+
+```python
+>>> traci.vehicle.getIDList()
+('f_0.0', 'f_0.1')
+>>> traci.vehicle.getSpeed('f_0.0')
+8.21320034653414
+>>> traci.vehicle.getLaneID('f_0.0')
+'E0_0'
+```
+
+在使用完毕后, 使用`traci.close()`停止SUMO的模拟并关闭与SUMO间的连接.
+
+### 对traci接口的处理逻辑做轻量定制
+
+SUMO中的Traci接口的工作逻辑是通过调用一组Python脚本实现的. 我们同时也可以通过修改Traci的脚本来实现对Traci接口的工作逻辑做些许更改与定制.
+
+找到SUMO的安装目录, 并参照先前提到的SUMO安装目录结构找到`Sumo/tools/traci`文件夹. 文件夹下列举了Traci API所用到的一系列脚本文件.
+
+以`vehicle`子模组为例, 打开上述文件夹下的`_vehicle.py`文件, 在`VehicleDomain`的class下可以看见traci中可调用的各类函数.
+在`getSpeed()`函数下添加一行`print("Hello there!")`的代码.
+
+![_vehicle.py](images/Image2022-03-25-16-59-55.png)
+
+保存文件后再一次用traci打开SUMO, 并在模拟开始后使用`traci.vehicle.getSpeed()`函数, 可以看出刚才对脚本做出的修改已经生效.
+
+```python
+>>> traci.vehicle.getSpeed('f_0.0')
+Hello there!
+8.21320034653414
+```
