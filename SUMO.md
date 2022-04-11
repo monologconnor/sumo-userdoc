@@ -2,8 +2,6 @@
 
 > SUMO (Simulation of Urban MObility), 一个由Eclipse维护的开源道路仿真模拟应用, 提供了多种交通运输及包括路人行为场景模拟的解决方案, 此文档为个人在学习SUMO使用期间个人对SUMO原理及应用的理解的总结.
 
-[TOC]
-
 ## SUMO 安装注意事项
 
 经个人测试, SUMO在Windows的Linux子系统, WSL2(Windows Subsystem of Linux)下, SUMO的图形交互应用`sumo-gui`会出现**路网结构无法正常显示**的问题, 而同时因个人有使用OmNet++下Veins框架通过traci接口与SUMO进行接口通信的需求, Windows下OmNet++的Veins依赖包(Simu5G)**无法正常编译**, 只能通过WSL使用OmNet++, 且Windows下的SUMO与WSL2下的Veins间因WSL2的Hyper-V虚拟机性质, **无法正常通信**.
@@ -552,3 +550,108 @@ SUMO中的Traci接口的工作逻辑是通过调用一组Python脚本实现的. 
 Hello there!
 8.21320034653414
 ```
+
+## 使用SUMO组件自动创建路网及车流文件
+
+除了使用`netedit`或手动编辑文本的方式创建路网文件以及车流文件外, SUMO还提供了一系列命令行工具以及脚本可以帮助我们创建路网文件以及车流文件
+
+### 使用`netgenerate`工具快速生成路网
+
+`netgenerate`为SUMO提供的根据用户需求参数快速创建所需简易路网文件的命令行工具.
+通常`netgenerage`在安装SUMO时已经被添加进了PATH路径内, 在终端内输入`netgenerage`或`netgenerate.exe`(Windows)便可直接调用.
+
+`netgenerage`目前支持创建三种类型的路网结构, 分别为:
+
+* **网格路网**(Grid Network)
+* **蛛网路网**(Spider Network)
+* **随机路网**(Random Network)
+
+在使用`netgenerate`构建路网时与路网构建相关的参数有:
+
+| 参数                      | 定义                                                                  | 默认值    |
+| ------------------------- | --------------------------------------------------------------------- | --------- |
+| --grid, -g                | 指定路网结构为网格路网                                                | false     |
+| --grid.number             | 指定网格路网中横向与纵向的全局节点数量                                | 5         |
+| --grid.length             | 指定网格路网中横向与纵向的全局连接长度                                | 100       |
+| --grid.x-number           | 指定网格路网中横向节点的数量(可覆盖全局数量)                          | 5         |
+| --grid.y-number           | 指定网格路网中纵向节点的数量(可覆盖全局数量)                          | 5         |
+| --grid.x-length           | 指定网格路网中横向连接的长度(可覆盖全局长度)                          | 5         |
+| --grid.y-length           | 指定网格路网中纵向连接的长度(可覆盖全局长度)                          | 5         |
+| --grid.attach-length      | 指定网格路网中横向与纵向的边缘连接的全局长度(长度为0代表边缘没有连接) | 0         |
+| --gird.x-attach-length    | 指定网格路网中横向的边缘连接长度(可覆盖全局长度)                      | 0         |
+| --gird.y-attach-length    | 指定网格路网中纵向的边缘连接长度(可覆盖全局长度)                      | 0         |
+| --spider, -s              | 指定路网结构为蛛网结构                                                | false     |
+| --spider.arm-number       | 指定蛛网结构中轴的数量                                                | 13        |
+| --spider.circle-number    | 指定蛛网结构的层级数量                                                | 20        |
+| --spider.space-radius     | 指定蛛网结构的层间距离                                                | 100       |
+| --spider.omit-center      | 是否忽略蛛网结构的中心节点                                            | false     |
+| --rand, -r                | 指定路网结构为随机路网                                                | false     |
+| --rand.iterations         | 指定随机路网中往路网添加连接的次数                                    | 2000      |
+| --bidi-probability        | 指定路网中添加双向车道的几率                                          | 1         |
+| --rand.max-distance       | 指定随机路网中单条连接的最大长度                                      | 250       |
+| --rand.min-distance       | 指定随机路网中单条连接的最小长度                                      | 100       |
+| --rand.min-angle          | 指定随机路网中每组车道间的最小夹角度数                                | 45        |
+| --rand.connectivity       | 随机路网中新建车道不为死路的概率                                      | 0..95     |
+| --rand.neighbor-dist<1-6> | 随机路网中节点拥有正好<1-6>条连接的概率                               | Undefined |
+| --rand.grid               | 将随机路网以网格的方式构建, 并以<rand.min-distance>参数为网格间的间距 | false     |
+
+以下为使用以上部分参数创建的不同类型的路网文件
+
+* `netgenerate.exe --grid --grid.number=8 --grid.length=20 --grid.attach-length=50 -o grid-eight.net.xml`
+![gird-eight](images/Image20220411202631.png)
+* `netgenerate.exe --spider --spider.arm-number=5 --spider.circle-number=7 --spider.space-radius=20 -o spider-five.net.xml`
+![spider-five](images/Image20220411202943.png)  
+* `netgenerate.exe --rand --rand.iterations=100 --rand.max-distance=50 --rand.min-distance=10 --rand.min-angle=30 -o rand-hundred.net.xml`
+![rand-hundred](images/Image20220411203202.png)
+
+[官网参考 - NetGenerate](https://sumo.dlr.de/docs/netgenerate.html)
+
+### 使用`randomTrips.py`自动生成车流
+
+`randomTrips.py`为SUMO官方提供的方便用户创建大量车流的工具性Python脚本, 位于SUMO安装目录下的`tools`文件夹中.
+
+在使用`randomTrips.py`脚本时, 有以下常用参数可以被指定
+
+| 参数               | 定义                                                             | 默认值    |
+| ------------------ | ---------------------------------------------------------------- | --------- |
+| -n                 | 用于生成车流文件的路网文件(network)                              | Undefined |
+| -b                 | 车流开始生成的时间(秒)                                           | 0         |
+| -e                 | 车流停止生成的时间(秒)                                           | 3600      |
+| -p                 | 车流生成的频率(秒/辆)                                            | 1         |
+| --random-depart    | 在开始时间与结束时间之间随机发车                                 | Undefined |
+| --binomial \<INT\> | 使车辆在开始与结束时间之间的生成频率符合参数为\<INT\>的二项分布  | Undefined |
+| --prefix           | 生成车流的id前缀                                                 | ""        |
+| --min-distance     | 车流从出发点至到达点之间的最短距离                               | Undefined |
+| --flows \<INT\>    | 将生成的车流整合为\<INT\>个`flow`, 使之符合`-p`定义的发车频率    | Undefined |
+| --random           | 设置此值为`true`使相同参数可以生成随机的车流, 否则为相同车流     | false     |
+| --seed             | 车流生成的种子值                                                 | Undefined |
+| --route-file       | 使trip文件通过后台调用`duarouter`生成指定文件名的车流文件(route) | Undefined |
+
+值得注意的是, `randomTrips.py`默认并不会生成完整的车流文件, 而是定义只包含**起点**与**终点**的`trips`文件, 即之前讲到的**待补全路线(Incomplete Route)**. `randomTrips.py`所生成的`trips`并**不保证**起点与终点之间可以被连通.
+如果想要一步到位生成完整的车流文件(route), 需要使用到上表中提到的`--route-file`参数, 该参数将使脚本在后台调用SUMO的车流生成工具`duarouter`生成从起点到终点之间的**完整路线**.
+
+以下命令将以上表中的部分参数生成一份示例`trips`文件, 因内容过多故不在此粘贴.
+`python <Path to SUMO>\tools\randomTrips.py' -n <network>.net.xml -b 0 -e 360 -p 1.5 --prefix="tp-" -o trips.trips.xml`
+
+更多的参数可以参照:
+
+* `python  <Path to SUMO>\tools\randomTrips.py' --help`
+* [官网参考 - randomTrips.py](https://sumo.dlr.de/docs/Tools/Trip.html)
+
+### 使用`jtrrouter`自动生成完整的车流
+
+在上面提到, `randomTrips.py`并不会生成完整的车流文件, 除非使用`--route-file`参数来调用SUMO的车流生成工具`duarouter`以生成完整车流.
+
+`duarouter`是基于 **最短路径算法(Shortest Path Computation)** 生成完整的车流路线, 同时SUMO还提供了另一种生成完整车流路线的工具, 即`jtrrouter`, 其基于 **各个节点往不同方向转向的概率(Junction Turning Ratio)** 来生成完整车流路线
+
+> 具体使用方法待补全, 感兴趣可参考[官方文档 - jtrrouter](https://sumo.dlr.de/docs/jtrrouter.html)
+
+## 在路网模拟中添加行人(Pedestrain)
+
+## 在路网模拟中添加交通信号灯(Traffic Light)
+
+## 设定车辆的跟驰模型(Car-Following Model)
+
+## 创建新的交通工具实体类型
+
+## 使用Veins与Traci接口进行交互
