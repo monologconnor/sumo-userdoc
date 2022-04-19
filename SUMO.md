@@ -648,6 +648,98 @@ Hello there!
 
 ## 在路网模拟中添加行人(Pedestrain)
 
+在添加行人之前, 先建造好一个带有三车道及逆向车道的十字路口路网并在十字中心添加人行横道
+
+![crossroad](images/Image20220418212350.png)
+> 需要注意的是, 十字路口的中心也需要设置为一个节点, 否则横竖两条重叠的路线将不被视为交叉
+
+### 在十字路口中添加人行横道
+
+在`Network`编辑模式下, 选择工具栏中的`人行道编辑工具`
+![Cross-editing tool](images/Image20220418212819.png)
+
+在添加人行横道之前, 需要先点击交叉路口的**中心节点**, 使四个方向的道路全部变为绿色, 以便程序知道人行横道需要被添加到哪个路口.
+![Select Center](images/Image20220418213103.png)
+
+随后依次点击左侧两个方向的车道作为人行横道需要穿过的道路, 再点击左侧面板中的`Create Crossing`按钮以创建人行横道.
+![First Cross](images/Image20220418213535.png)  
+
+再重复以上步骤, 为交叉路口创建完整的人行横道.
+![Complete-Corss](images/Image20220418213648.png)  
+
+在`net`文件中, 人行横道也被视为一种`连接(edge)`, 不过与普通连接不同的是, 人行横道执行的是被成为`crossing`的函数. 因为上述操作保存的`net`文件过长, 以下仅展示与人行横道有关的内容
+
+```xml
+<edge id=":J2_c0" function="crossing" crossingEdges="E2 -E2">
+        <lane id=":J2_c0_0" index="0" allow="pedestrian" speed="1.00" length="6.40" width="4.00" shape="3.20,5.20 -3.20,5.20"/>
+    </edge>
+    <edge id=":J2_c1" function="crossing" crossingEdges="E1 -E1">
+        <lane id=":J2_c1_0" index="0" allow="pedestrian" speed="1.00" length="6.40" width="4.00" shape="5.20,-3.20 5.20,3.20"/>
+    </edge>
+    <edge id=":J2_c2" function="crossing" crossingEdges="E3 -E3">
+        <lane id=":J2_c2_0" index="0" allow="pedestrian" speed="1.00" length="6.40" width="4.00" shape="-3.20,-5.20 3.20,-5.20"/>
+    </edge>
+    <edge id=":J2_c3" function="crossing" crossingEdges="-E0 E0">
+        <lane id=":J2_c3_0" index="0" allow="pedestrian" speed="1.00" length="6.40" width="4.00" shape="-5.20,3.20 -5.20,-3.20"/>
+    </edge>
+    <edge id=":J2_w0" function="walkingarea">
+        <lane id=":J2_w0_0" index="0" allow="pedestrian" speed="1.00" length="10.51" width="3.20" shape="-3.20,7.20 0.00,7.20 0.00,7.20 3.20,7.20 7.20,3.20 7.20,0.00 7.20,0.00 7.20,-3.20 3.20,-7.20 0.00,-7.20 0.00,-7.20 -3.20,-7.20 -7.20,-3.20 -7.20,0.00 -7.20,0.00 -7.20,3.20 -3.31,5.98 -3.64,4.98 -4.20,4.20 -4.98,3.64 -5.98,3.31"/>
+    </edge>
+    <edge id=":J2_w1" function="walkingarea">
+        <lane id=":J2_w1_0" index="0" allow="pedestrian" speed="1.00" length="2.83" width="4.00" shape="-3.20,3.20 -3.20,7.20 -7.20,3.20 -3.20,3.20"/>
+    </edge>
+    <edge id=":J2_w2" function="walkingarea">
+        <lane id=":J2_w2_0" index="0" allow="pedestrian" speed="1.00" length="2.83" width="4.00" shape="3.20,3.20 7.20,3.20 3.20,7.20 3.20,3.20"/>
+    </edge>
+    <edge id=":J2_w3" function="walkingarea">
+        <lane id=":J2_w3_0" index="0" allow="pedestrian" speed="1.00" length="2.83" width="4.00" shape="3.20,-3.20 3.20,-7.20 7.20,-3.20 3.20,-3.20"/>
+    </edge>
+    <edge id=":J2_w4" function="walkingarea">
+        <lane id=":J2_w4_0" index="0" allow="pedestrian" speed="1.00" length="2.83" width="4.00" shape="-3.20,-3.20 -7.20,-3.20 -3.20,-7.20 -3.20,-3.20"/>
+    </edge>
+    <edge id=":J3_w0" function="walkingarea">
+        <lane id=":J3_w0_0" index="0" allow="pedestrian" speed="1.00" length="3.20" width="3.20" shape="100.00,0.00 100.00,3.20 100.00,-3.20 100.00,0.00"/>
+    </edge>
+    <edge id=":J4_w0" function="walkingarea">
+        <lane id=":J4_w0_0" index="0" allow="pedestrian" speed="1.00" length="3.20" width="3.20" shape="0.00,100.00 -3.20,100.00 3.20,100.00 0.00,100.00"/>
+    </edge>
+    <edge id=":J5_w0" function="walkingarea">
+        <lane id=":J5_w0_0" index="0" allow="pedestrian" speed="1.00" length="3.20" width="3.20" shape="0.00,-100.00 3.20,-100.00 -3.20,-100.00 0.00,-100.00"/>
+    </edge>
+```
+
+### 添加行人
+
+在保存好十字路口路网后切换至`Demand`编辑模式, 在工具栏中选择`创建行人工具`
+![PersonCreatingTool](images/Image20220419002214.png)  
+
+随后在路网中选择两条`连接`作为行人的出发点与到达点, 随后点击左侧面板的`Finish Route Creation`按钮完成添加.
+![Person Creation](images/Image20220419002413.png)  
+
+创建好一个或多个行人路线后, 通过上文中保存车流文件的相同方法保存,或是通过`Ctrl+Shift+D`快捷保存至`*.rou.xml`文件.
+
+在`*.rou.xml`文件中, 行人被以`person`项目记录, 并附有此行人的路线项目`personTrip`.
+
+```xml
+<routes xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://sumo.dlr.de/xsd/routes_file.xsd">
+    <person id="p_1" depart="0.00">
+        <personTrip from="E0" to="-E2"/>
+    </person>
+</routes>
+```
+
+>注: 经个人测试发现, 若在netedit中删除行人及路线, 会在`*.rou.xml`中残留类似于`<person id="p_1" depart="0.00">`的空项目, 此项目会导致SUMO在读取`*.rou.xml`文件时报错, 需手动删除.
+
+### 在SUMO中运行行人的模拟
+
+与上文中的车流章节类似, 在完成对行人流的保存后可通过`Edit->Open in SUMO-gui`打开SUMO模拟并自动加载行人流. 在设置好`delay`后点击运行即可看到行人在路网中的行走过程.
+
+>注: 在路网规模过大的情况下, 通常行人的显示模型会因为太小而完全找不到行人, 可通过更改工具栏中`Edit->Edit Visualization`项目下的`Persons`菜单中`Exaggerated by ...`数值放大行人模型的显示, 或在模拟开始后使用`Locate->Locate Persons`工具手动寻找行人位置.
+
+![Person Walking](images/Image20220419003850.png)  
+
+通过模拟我们可以看出, SUMO中的行人模拟会自行通过设定好的起点与终点规划路线, 不受车道方向约束(毕竟人行道也没有得逆行), 会在道路**最靠边**的"行人专有道路"上行走, 并且只会通过我们设定好的**人行横道**穿越马路.
+
 ## 在路网模拟中添加交通信号灯(Traffic Light)
 
 ## 设定车辆的跟驰模型(Car-Following Model)
